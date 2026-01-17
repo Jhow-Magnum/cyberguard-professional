@@ -454,58 +454,10 @@ def render_training_summary():
     else:
         st.info(f"⚠️ Você precisa de {eligibility['required_accuracy']}% de acerto para gerar certificado (sua taxa: {accuracy:.1f}%)")
     
-    # Feedback detalhado com IA
+    # Botões de ação - SEM FEEDBACK PARA EVITAR TRAVAMENTO
     st.markdown("---")
-    st.markdown("## 🤖 Análise Detalhada de Desempenho")
+    st.info("💡 **Análise detalhada temporariamente desabilitada para melhor performance.**")
     
-    # Processar feedback questão por questão sem spinner global
-    for i, q in enumerate(questions):
-        user_ans_idx = st.session_state.answers.get(i, int(q['correctAnswer']))
-        correct_ans_idx = int(q['correctAnswer'])
-        is_correct = user_ans_idx == correct_ans_idx
-        
-        # Header da questão
-        st.markdown(f"### Questão {i+1}: {q['question']}")
-        
-        # Mostrar respostas
-        col1, col2 = st.columns(2)
-        with col1:
-            if is_correct:
-                st.success(f"✅ **Sua resposta:** {q['options'][user_ans_idx]}")
-            else:
-                st.error(f"❌ **Sua resposta:** {q['options'][user_ans_idx]}")
-        
-        with col2:
-            st.info(f"✅ **Resposta correta:** {q['options'][correct_ans_idx]}")
-        
-        # Feedback IA - SEM SPINNER para evitar travamento
-        st.markdown("**Análise Detalhada:**")
-        
-        try:
-            # Tentar IA sem spinner - mais rápido
-            feedback = feedback_generator.generate_feedback(
-                q['question'],
-                q['options'][user_ans_idx],
-                q['options'][correct_ans_idx],
-                is_correct,
-                st.session_state.category
-            )
-            st.markdown(feedback)
-        except Exception as e:
-            # Fallback imediato sem travamento
-            st.warning("⚠️ **Limite de IA atingido - usando feedback local:**")
-            if is_correct:
-                st.success(f"✅ Parabéns! Sua resposta '{q['options'][user_ans_idx]}' está correta!")
-            else:
-                st.error(f"❌ Sua resposta '{q['options'][user_ans_idx]}' está incorreta. A resposta correta é '{q['options'][correct_ans_idx]}'.")
-            
-            # Mostrar explicação da questão se disponível
-            if q.get('explanation'):
-                st.info(f"💡 **Explicação:** {q['explanation']}")
-        
-        st.markdown("---")
-    
-    # Botões de ação
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("🔄 Novo Treinamento", use_container_width=True):
