@@ -414,7 +414,7 @@ def render_question():
 
 
 def render_training_summary():
-    """Resumo do treinamento"""
+    """Resumo do treinamento - VERSÃO LIMPA SEM FEEDBACK"""
     st.balloons()
     st.success("🎉 Parabéns! Você completou o treinamento!")
     
@@ -450,14 +450,14 @@ def render_training_summary():
             )
             if cert['success']:
                 st.success(f"✅ Certificado gerado! ID: {cert['certificate_id']}")
-                # log_event(logger, "certificate_generated", st.session_state.user_id, cert)
     else:
         st.info(f"⚠️ Você precisa de {eligibility['required_accuracy']}% de acerto para gerar certificado (sua taxa: {accuracy:.1f}%)")
     
-    # Botões de ação - SEM FEEDBACK PARA EVITAR TRAVAMENTO
+    # REMOVIDO: Seção de feedback que causava travamento
     st.markdown("---")
-    st.info("💡 **Análise detalhada temporariamente desabilitada para melhor performance.**")
+    st.success("✅ **Treinamento concluído com sucesso!** Use os botões abaixo para continuar.")
     
+    # Botões de ação
     col1, col2, col3 = st.columns(3)
     with col1:
         if st.button("🔄 Novo Treinamento", use_container_width=True):
