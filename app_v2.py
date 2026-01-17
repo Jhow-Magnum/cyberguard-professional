@@ -154,25 +154,25 @@ certificate_manager = CertificateManager()
 gamification_manager = GamificationManager()
 report_generator = ReportGenerator()
 
-# Verificar status do Bedrock
+# Verificar status do Bedrock (cache por sessão)
+@st.cache_data(ttl=300)  # Cache por 5 minutos
 def check_bedrock_status():
-    """Verifica se Bedrock está disponível"""
-    try:
-        # Teste simples com o Bedrock
-        response = aws_client.bedrock.invoke_model(
-            modelId='amazon.nova-micro-v1:0',
-            body=json.dumps({
-                "messages": [{"role": "user", "content": [{"text": "test"}]}],
-                "inferenceConfig": {"max_new_tokens": 10, "temperature": 0.1}
-            })
-        )
-        return True
-    except Exception as e:
-        if "ThrottlingException" in str(e) or "Too many tokens" in str(e):
-            return False
-        return True  # Outros erros não são de limite
+    """Verifica se Bedrock está disponível - com cache"""
+    return True  # Assumir disponível, tratar erro quando necessário
 
-# Verificar status na inicialização
+# Cache para stats do usuário
+@st.cache_data(ttl=60)  # Cache por 1 minuto
+def get_cached_user_stats(user_id):
+    """Stats do usuário com cache"""
+    return progress_manager.get_user_stats(user_id)
+
+# Cache para questões
+@st.cache_data(ttl=300)  # Cache por 5 minutos
+def get_cached_questions(category):
+    """Questões com cache"""
+    return question_manager.get_by_category(category)
+
+# Verificar status na inicialização (cached)
 bedrock_available = check_bedrock_status()
 
 
@@ -793,9 +793,7 @@ def render_admin_panel():
 def main():
     """Função principal"""
     
-    # Aviso global sobre Bedrock se necessário
-    if not bedrock_available:
-        st.warning("⚠️ **Aviso:** O feedback personalizado da IA está temporariamente indisponível devido ao limite diário do Free Tier. O sistema continua funcionando normalmente. Volte amanhã para feedback detalhado da IA!")
+    # Remover aviso global - tratar erro apenas quando necessário
     
     # Barra lateral
     with st.sidebar:
