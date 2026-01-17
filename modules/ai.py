@@ -19,31 +19,14 @@ class FeedbackGenerator:
     def generate_feedback(self, question: str, user_answer: str,
                          correct_answer: str, is_correct: bool,
                          category: str) -> str:
-        """Gera feedback personalizado usando IA - ÚNICO E DETALHADO POR QUESTÃO"""
-        try:
-            logger.info("Iniciando geração de feedback")
-            
-            if not self.bedrock:
-                logger.info("Bedrock não disponível, usando feedback local")
-                return self._get_default_feedback(is_correct, user_answer, correct_answer)
-            
-            # Tentar chamada direta com timeout simples
-            logger.info("Tentando chamada Bedrock")
-            try:
-                feedback = self._call_bedrock_feedback_simple(question, user_answer, correct_answer, is_correct, category)
-                if feedback:
-                    logger.info("Feedback gerado com sucesso")
-                    return feedback
-                else:
-                    logger.warning("Feedback vazio, usando local")
-                    return self._get_default_feedback(is_correct, user_answer, correct_answer)
-            except Exception as bedrock_error:
-                logger.error(f"Erro Bedrock: {bedrock_error}")
-                return self._get_quota_exceeded_feedback(is_correct, user_answer, correct_answer)
-            
-        except Exception as e:
-            logger.error(f"Erro geral: {e}")
-            return self._get_default_feedback(is_correct, user_answer, correct_answer)
+        """Gera feedback - SEMPRE LOCAL PARA EVITAR TRAVAMENTO"""
+        # DESABILITADO TEMPORARIAMENTE - APENAS FEEDBACK LOCAL
+        if is_correct:
+            return f"✅ **Parabéns!** Sua resposta '{user_answer}' está correta!"
+        else:
+            return f"❌ **Resposta incorreta.** Sua resposta: '{user_answer}'. Resposta correta: '{correct_answer}'."
+        
+        # TODO: Reativar IA após apresentação
     
     def _call_bedrock_feedback_simple(self, question: str, user_answer: str, 
                               correct_answer: str, is_correct: bool, category: str) -> str:
