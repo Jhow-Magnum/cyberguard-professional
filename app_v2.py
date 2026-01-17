@@ -1,6 +1,7 @@
 """
 CyberGuard Professional - Plataforma de Treinamento em Segurança Cibernética
 Versão 2.0 com IA Avançada, Analytics, Certificados e Gamificação
+VERSÃO LIMPA - SEM FEEDBACK QUE CAUSA TRAVAMENTO - BUILD 2025.01.27
 """
 
 import streamlit as st
