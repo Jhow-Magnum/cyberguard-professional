@@ -11,10 +11,11 @@ from utils.aws_client import get_aws_client
 logger = logging.getLogger(__name__)
 
 class FeedbackGenerator:
-    """Gera feedback inteligente com Amazon Bedrock"""
+    """Gera feedback - DESABILITADO TEMPORARIAMENTE"""
     
     def __init__(self):
-        self.bedrock = get_aws_client().bedrock
+        # DESABILITADO: self.bedrock = get_aws_client().bedrock
+        self.bedrock = None  # Forçar None para evitar chamadas
     
     def generate_feedback(self, question: str, user_answer: str,
                          correct_answer: str, is_correct: bool,
@@ -167,35 +168,16 @@ Use tom amigável e motivador. Português brasileiro."""
 
 
 class AIQuestionGenerator:
-    """Gera questões com Amazon Bedrock IA"""
+    """Gera questões - DESABILITADO TEMPORARIAMENTE"""
     
     def __init__(self):
-        self.bedrock = get_aws_client().bedrock
+        # DESABILITADO: self.bedrock = get_aws_client().bedrock
+        self.bedrock = None  # Forçar None para evitar chamadas
     
     def generate_question(self, category: str, difficulty: str = 'medium',
                          topic: str = '') -> Dict:
-        """Gera uma questão completa com IA"""
-        try:
-            if not self.bedrock:
-                return None
-            
-            # Usar timeout para evitar travamento
-            with ThreadPoolExecutor() as executor:
-                future = executor.submit(self._call_bedrock_question, category, difficulty, topic)
-                try:
-                    return future.result(timeout=15)  # 15 segundos timeout
-                except TimeoutError:
-                    logger.warning("Timeout na geração de questão")
-                    return None
-            
-        except Exception as e:
-            error_msg = str(e)
-            if "ThrottlingException" in error_msg or "Too many tokens" in error_msg or "ServiceQuotaExceededException" in error_msg:
-                logger.warning(f"Limite diário do Bedrock atingido para geração de questões")
-                return None  # Retorna None para indicar que não foi possível gerar
-            else:
-                logger.error(f"Erro ao gerar questão: {e}")
-            return None
+        """DESABILITADO - Retorna None sempre"""
+        return None  # Sempre retorna None - IA desabilitada
     
     def _call_bedrock_question(self, category: str, difficulty: str, topic: str) -> Dict:
         """Chama o Bedrock para geração de questão de forma isolada"""
