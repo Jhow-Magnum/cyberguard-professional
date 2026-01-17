@@ -318,12 +318,13 @@ def render_training_section():
         
         with col2:
             if st.button("🤖 Gerar com IA", use_container_width=True):
-                with st.spinner("Gerando questão com IA..."):
-                    generator = AIQuestionGenerator()
-                    question = generator.generate_question(category, difficulty)
-                    if question:
-                        st.success("✅ Questão gerada com sucesso!")
-                        st.json(question)
+                generator = AIQuestionGenerator()
+                question = generator.generate_question(category, difficulty)
+                if question:
+                    st.success("✅ Questão gerada com sucesso!")
+                    st.json(question)
+                else:
+                    st.warning("⚠️ Limite de IA atingido. Tente novamente mais tarde.")
     
     else:
         # Renderizar questão atual
