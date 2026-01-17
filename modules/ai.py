@@ -11,23 +11,58 @@ from utils.aws_client import get_aws_client
 logger = logging.getLogger(__name__)
 
 class FeedbackGenerator:
-    """Gera feedback - DESABILITADO TEMPORARIAMENTE"""
+    """Gera feedback inteligente com Amazon Bedrock - VERSÃO ROBUSTA"""
     
     def __init__(self):
-        # DESABILITADO: self.bedrock = get_aws_client().bedrock
-        self.bedrock = None  # Forçar None para evitar chamadas
+        try:
+            self.bedrock = get_aws_client().bedrock
+        except:
+            self.bedrock = None
     
     def generate_feedback(self, question: str, user_answer: str,
                          correct_answer: str, is_correct: bool,
                          category: str) -> str:
-        """Gera feedback - SEMPRE LOCAL PARA EVITAR TRAVAMENTO"""
-        # DESABILITADO TEMPORARIAMENTE - APENAS FEEDBACK LOCAL
-        if is_correct:
-            return f"✅ **Parabéns!** Sua resposta '{user_answer}' está correta!"
-        else:
-            return f"❌ **Resposta incorreta.** Sua resposta: '{user_answer}'. Resposta correta: '{correct_answer}'."
+        """Gera feedback com IA - VERSÃO ROBUSTA COM FALLBACK GARANTIDO"""
+        # Sempre tentar feedback local primeiro se não tiver Bedrock
+        if not self.bedrock:
+            return self._get_local_feedback(is_correct, user_answer, correct_answer)
         
-        # TODO: Reativar IA após apresentação
+        try:
+            # Tentar IA com timeout rápido
+            prompt = self._build_prompt(question, user_answer, correct_answer, is_correct)
+            
+            response = self.bedrock.invoke_model(
+                modelId='amazon.nova-micro-v1:0',
+                body=json.dumps({
+                    "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                    "inferenceConfig": {"max_new_tokens": 200, "temperature": 0.7}
+                })
+            )
+            
+            result = json.loads(response['body'].read())
+            ai_feedback = result['output']['message']['content'][0]['text']
+            
+            # Retornar feedback da IA se sucesso
+            return f"🤖 **Feedback da IA:**\n\n{ai_feedback}"
+            
+        except Exception as e:
+            # SEMPRE retornar feedback local em caso de erro
+            logger.warning(f"Bedrock falhou, usando local: {e}")
+            return self._get_local_feedback(is_correct, user_answer, correct_answer)
+    
+    def _build_prompt(self, question: str, user_answer: str, correct_answer: str, is_correct: bool) -> str:
+        """Constrói prompt otimizado"""
+        if is_correct:
+            return f"Parabéns! Explique em 50 palavras por que '{user_answer}' é a resposta correta para: {question}"
+        else:
+            return f"Explique em 80 palavras por que '{correct_answer}' é melhor que '{user_answer}' para: {question}"
+    
+    def _get_local_feedback(self, is_correct: bool, user_answer: str, correct_answer: str) -> str:
+        """Feedback local sempre funcional"""
+        if is_correct:
+            return f"✅ **Excelente!** Sua resposta '{user_answer}' está correta! Você demonstra boa compreensão dos conceitos de segurança cibernética."
+        else:
+            return f"❌ **Resposta incorreta.** Sua resposta '{user_answer}' não é a ideal. A resposta correta '{correct_answer}' representa a melhor prática em segurança. Continue estudando!"
     
     def _call_bedrock_feedback_simple(self, question: str, user_answer: str, 
                               correct_answer: str, is_correct: bool, category: str) -> str:

@@ -456,6 +456,39 @@ def render_training_summary():
     
     # REMOVIDO: Seção de feedback que causava travamento
     st.markdown("---")
+    
+    # TESTE: Reativando feedback com versão robusta
+    st.markdown("## 🤖 Feedback das Questões")
+    
+    for i, q in enumerate(questions):
+        user_ans_idx = st.session_state.answers.get(i, int(q['correctAnswer']))
+        correct_ans_idx = int(q['correctAnswer'])
+        is_correct = user_ans_idx == correct_ans_idx
+        
+        with st.expander(f"Questão {i+1}: {q['question'][:50]}...", expanded=False):
+            col1, col2 = st.columns(2)
+            with col1:
+                if is_correct:
+                    st.success(f"✅ Sua resposta: {q['options'][user_ans_idx]}")
+                else:
+                    st.error(f"❌ Sua resposta: {q['options'][user_ans_idx]}")
+            with col2:
+                st.info(f"✅ Resposta correta: {q['options'][correct_ans_idx]}")
+            
+            # Feedback com tratamento robusto
+            try:
+                feedback = feedback_generator.generate_feedback(
+                    q['question'],
+                    q['options'][user_ans_idx],
+                    q['options'][correct_ans_idx],
+                    is_correct,
+                    st.session_state.category
+                )
+                st.markdown(feedback)
+            except Exception as e:
+                st.error(f"Erro no feedback: {e}")
+                st.info("💡 Continue praticando para melhorar seus conhecimentos!")
+    
     st.success("✅ **Treinamento concluído com sucesso!** Use os botões abaixo para continuar.")
     
     # Botões de ação
