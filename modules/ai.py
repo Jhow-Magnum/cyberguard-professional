@@ -29,27 +29,30 @@ class FeedbackGenerator:
                 future = executor.submit(self._call_bedrock_feedback, 
                                        question, user_answer, correct_answer, is_correct, category)
                 try:
-                    return future.result(timeout=10)  # 10 segundos timeout
+                    result = future.result(timeout=5)  # Reduzido para 5 segundos
+                    return result if result else self._get_default_feedback(is_correct, user_answer, correct_answer)
                 except TimeoutError:
                     logger.warning("Timeout na chamada do Bedrock - usando feedback local")
                     return self._get_timeout_feedback(is_correct, user_answer, correct_answer)
+                except Exception as e:
+                    logger.error(f"Erro na thread do Bedrock: {e}")
+                    return self._get_default_feedback(is_correct, user_answer, correct_answer)
             
         except Exception as e:
             error_msg = str(e)
+            logger.error(f"Erro geral ao gerar feedback: {e}")
             if "ThrottlingException" in error_msg or "Too many tokens" in error_msg or "ServiceQuotaExceededException" in error_msg:
-                logger.warning(f"Limite diário do Bedrock atingido")
                 return self._get_quota_exceeded_feedback(is_correct, user_answer, correct_answer)
-            else:
-                logger.error(f"Erro ao gerar feedback: {e}")
             return self._get_default_feedback(is_correct, user_answer, correct_answer)
     
     def _call_bedrock_feedback(self, question: str, user_answer: str, 
                               correct_answer: str, is_correct: bool, category: str) -> str:
         """Chama o Bedrock de forma isolada para permitir timeout"""
-        status = "✅ CORRETA" if is_correct else "❌ INCORRETA"
-        
-        if is_correct:
-            prompt = f"""Você é um instrutor especialista em segurança cibernética.
+        try:
+            status = "✅ CORRETA" if is_correct else "❌ INCORRETA"
+            
+            if is_correct:
+                prompt = f"""Você é um instrutor especialista em segurança cibernética.
 
 QUESTÃO: {question}
 RESPOSTA DO ALUNO: {user_answer}
@@ -62,8 +65,8 @@ Gere um feedback BREVE E ESPECÍFICO (máximo 150 palavras) que:
 4. Recomende próximos passos ou aprofundamento
 
 Use português brasileiro, seja específico DESTA questão, não genérico."""
-        else:
-            prompt = f"""Você é um instrutor especialista em segurança cibernética.
+            else:
+                prompt = f"""Você é um instrutor especialista em segurança cibernética.
 
 QUESTÃO: {question}
 RESPOSTA INCORRETA DO ALUNO: {user_answer}
@@ -79,20 +82,25 @@ Gere um feedback DETALHADO (máximo 250 palavras) que:
 
 Seja MUITO ESPECÍFICO sobre ESTA questão e ESTA resposta. Não use frases genéricas.
 Use português brasileiro."""
-        
-        response = self.bedrock.invoke_model(
-            modelId='amazon.nova-micro-v1:0',
-            body=json.dumps({
-                "messages": [{"role": "user", "content": [{"text": prompt}]}],
-                "inferenceConfig": {"max_new_tokens": 800, "temperature": 0.8}
-            })
-        )
-        
-        result = json.loads(response['body'].read())
-        feedback = result['output']['message']['content'][0]['text']
-        
-        logger.info(f"Feedback gerado para questão: {question[:50]}...")
-        return feedback
+            
+            response = self.bedrock.invoke_model(
+                modelId='amazon.nova-micro-v1:0',
+                body=json.dumps({
+                    "messages": [{"role": "user", "content": [{"text": prompt}]}],
+                    "inferenceConfig": {"max_new_tokens": 800, "temperature": 0.8}
+                })
+            )
+            
+            result = json.loads(response['body'].read())
+            feedback = result['output']['message']['content'][0]['text']
+            
+            logger.info(f"Feedback gerado para questão: {question[:50]}...")
+            return feedback
+            
+        except Exception as e:
+            logger.error(f"Erro na chamada Bedrock: {e}")
+            # Retornar None para forçar fallback
+            return None
     
     def _get_quota_exceeded_feedback(self, is_correct: bool, user_answer: str = "", correct_answer: str = "") -> str:
         """Feedback quando limite de tokens é atingido"""

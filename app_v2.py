@@ -481,16 +481,29 @@ def render_training_summary():
                 with col2:
                     st.info(f"✅ **Resposta correta:** {q['options'][correct_ans_idx]}")
                 
-                # Feedback IA - detalhado e específico
+                # Feedback IA - detalhado e específico com tratamento de erro
                 st.markdown("**Análise Detalhada:**")
-                feedback = feedback_generator.generate_feedback(
-                    q['question'],
-                    q['options'][user_ans_idx],
-                    q['options'][correct_ans_idx],
-                    is_correct,
-                    st.session_state.category
-                )
-                st.markdown(feedback)
+                try:
+                    feedback = feedback_generator.generate_feedback(
+                        q['question'],
+                        q['options'][user_ans_idx],
+                        q['options'][correct_ans_idx],
+                        is_correct,
+                        st.session_state.category
+                    )
+                    st.markdown(feedback)
+                except Exception as e:
+                    # Fallback para erro na geração de feedback
+                    st.warning("⚠️ **Limite de IA atingido - usando feedback local:**")
+                    if is_correct:
+                        st.success(f"✅ Parabéns! Sua resposta '{q['options'][user_ans_idx]}' está correta!")
+                    else:
+                        st.error(f"❌ Sua resposta '{q['options'][user_ans_idx]}' está incorreta. A resposta correta é '{q['options'][correct_ans_idx]}'.")
+                    
+                    # Mostrar explicação da questão se disponível
+                    if q.get('explanation'):
+                        st.info(f"💡 **Explicação:** {q['explanation']}")
+                
                 st.markdown("---")
     
     # Botões de ação
