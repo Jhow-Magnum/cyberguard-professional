@@ -21,86 +21,58 @@ class FeedbackGenerator:
                          category: str) -> str:
         """Gera feedback personalizado usando IA - ÚNICO E DETALHADO POR QUESTÃO"""
         try:
+            logger.info("Iniciando geração de feedback")
+            
             if not self.bedrock:
+                logger.info("Bedrock não disponível, usando feedback local")
                 return self._get_default_feedback(is_correct, user_answer, correct_answer)
             
-            # Usar timeout para evitar travamento
-            with ThreadPoolExecutor() as executor:
-                future = executor.submit(self._call_bedrock_feedback, 
-                                       question, user_answer, correct_answer, is_correct, category)
-                try:
-                    result = future.result(timeout=5)  # Reduzido para 5 segundos
-                    return result if result else self._get_default_feedback(is_correct, user_answer, correct_answer)
-                except TimeoutError:
-                    logger.warning("Timeout na chamada do Bedrock - usando feedback local")
-                    return self._get_timeout_feedback(is_correct, user_answer, correct_answer)
-                except Exception as e:
-                    logger.error(f"Erro na thread do Bedrock: {e}")
+            # Tentar chamada direta com timeout simples
+            logger.info("Tentando chamada Bedrock")
+            try:
+                feedback = self._call_bedrock_feedback_simple(question, user_answer, correct_answer, is_correct, category)
+                if feedback:
+                    logger.info("Feedback gerado com sucesso")
+                    return feedback
+                else:
+                    logger.warning("Feedback vazio, usando local")
                     return self._get_default_feedback(is_correct, user_answer, correct_answer)
+            except Exception as bedrock_error:
+                logger.error(f"Erro Bedrock: {bedrock_error}")
+                return self._get_quota_exceeded_feedback(is_correct, user_answer, correct_answer)
             
         except Exception as e:
-            error_msg = str(e)
-            logger.error(f"Erro geral ao gerar feedback: {e}")
-            if "ThrottlingException" in error_msg or "Too many tokens" in error_msg or "ServiceQuotaExceededException" in error_msg:
-                return self._get_quota_exceeded_feedback(is_correct, user_answer, correct_answer)
+            logger.error(f"Erro geral: {e}")
             return self._get_default_feedback(is_correct, user_answer, correct_answer)
     
-    def _call_bedrock_feedback(self, question: str, user_answer: str, 
+    def _call_bedrock_feedback_simple(self, question: str, user_answer: str, 
                               correct_answer: str, is_correct: bool, category: str) -> str:
-        """Chama o Bedrock de forma isolada para permitir timeout"""
+        """Chama o Bedrock de forma simples sem threading"""
         try:
-            status = "✅ CORRETA" if is_correct else "❌ INCORRETA"
+            logger.info("Iniciando chamada Bedrock simples")
             
             if is_correct:
-                prompt = f"""Você é um instrutor especialista em segurança cibernética.
-
-QUESTÃO: {question}
-RESPOSTA DO ALUNO: {user_answer}
-STATUS: ✅ CORRETA
-
-Gere um feedback BREVE E ESPECÍFICO (máximo 150 palavras) que:
-1. Parabenize a resposta correta
-2. Explique POR QUE esta é a resposta correta
-3. Cite o conceito de segurança envolvido
-4. Recomende próximos passos ou aprofundamento
-
-Use português brasileiro, seja específico DESTA questão, não genérico."""
+                prompt = f"Parabéns! Sua resposta '{user_answer}' para a questão '{question}' está correta. Explique brevemente por que em 50 palavras."
             else:
-                prompt = f"""Você é um instrutor especialista em segurança cibernética.
-
-QUESTÃO: {question}
-RESPOSTA INCORRETA DO ALUNO: {user_answer}
-RESPOSTA CORRETA: {correct_answer}
-CATEGORIA: {category}
-
-Gere um feedback DETALHADO (máximo 250 palavras) que:
-
-1. **PORQUE ERROU**: Explique ESPECIFICAMENTE por que "{user_answer}" está ERRADA em relação a esta questão
-2. **PORQUE ESTÁ CERTA**: Explique POR QUE "{correct_answer}" é a resposta CORRETA
-3. **CONCEITO**: Ensine o conceito de segurança cibernética envolvido
-4. **DIFERENÇA PRÁTICA**: Cite exemplos práticos mostrando a diferença entre a resposta errada e a correta
-
-Seja MUITO ESPECÍFICO sobre ESTA questão e ESTA resposta. Não use frases genéricas.
-Use português brasileiro."""
+                prompt = f"Sua resposta '{user_answer}' para '{question}' está incorreta. A correta é '{correct_answer}'. Explique a diferença em 100 palavras."
             
             response = self.bedrock.invoke_model(
                 modelId='amazon.nova-micro-v1:0',
                 body=json.dumps({
                     "messages": [{"role": "user", "content": [{"text": prompt}]}],
-                    "inferenceConfig": {"max_new_tokens": 800, "temperature": 0.8}
+                    "inferenceConfig": {"max_new_tokens": 300, "temperature": 0.7}
                 })
             )
             
             result = json.loads(response['body'].read())
             feedback = result['output']['message']['content'][0]['text']
             
-            logger.info(f"Feedback gerado para questão: {question[:50]}...")
+            logger.info("Feedback Bedrock gerado com sucesso")
             return feedback
             
         except Exception as e:
-            logger.error(f"Erro na chamada Bedrock: {e}")
-            # Retornar None para forçar fallback
-            return None
+            logger.error(f"Erro na chamada Bedrock simples: {e}")
+            raise e
     
     def _get_quota_exceeded_feedback(self, is_correct: bool, user_answer: str = "", correct_answer: str = "") -> str:
         """Feedback quando limite de tokens é atingido"""

@@ -457,32 +457,34 @@ def render_training_summary():
     st.markdown("---")
     st.markdown("## 🤖 Análise Detalhada de Desempenho")
     
-    # Mostrar spinner enquanto gera feedback
-    with st.spinner("🤖 Gerando feedback com IA para todas as questões..."):
-        feedback_col = st.columns(1)[0]
+    # Processar feedback questão por questão sem spinner global
+    for i, q in enumerate(questions):
+        user_ans_idx = st.session_state.answers.get(i, int(q['correctAnswer']))
+        correct_ans_idx = int(q['correctAnswer'])
+        is_correct = user_ans_idx == correct_ans_idx
         
-        with feedback_col:
-            for i, q in enumerate(questions):
-                user_ans_idx = st.session_state.answers.get(i, int(q['correctAnswer']))
-                correct_ans_idx = int(q['correctAnswer'])
-                is_correct = user_ans_idx == correct_ans_idx
-                
-                # Header da questão
-                st.markdown(f"### Questão {i+1}: {q['question']}")
-                
-                # Mostrar respostas
-                col1, col2 = st.columns(2)
-                with col1:
-                    if is_correct:
-                        st.success(f"✅ **Sua resposta:** {q['options'][user_ans_idx]}")
-                    else:
-                        st.error(f"❌ **Sua resposta:** {q['options'][user_ans_idx]}")
-                
-                with col2:
-                    st.info(f"✅ **Resposta correta:** {q['options'][correct_ans_idx]}")
-                
-                # Feedback IA - detalhado e específico com tratamento de erro
-                st.markdown("**Análise Detalhada:**")
+        # Header da questão
+        st.markdown(f"### Questão {i+1}: {q['question']}")
+        
+        # Mostrar respostas
+        col1, col2 = st.columns(2)
+        with col1:
+            if is_correct:
+                st.success(f"✅ **Sua resposta:** {q['options'][user_ans_idx]}")
+            else:
+                st.error(f"❌ **Sua resposta:** {q['options'][user_ans_idx]}")
+        
+        with col2:
+            st.info(f"✅ **Resposta correta:** {q['options'][correct_ans_idx]}")
+        
+        # Feedback IA - com spinner individual e timeout
+        st.markdown("**Análise Detalhada:**")
+        
+        # Container para feedback
+        feedback_container = st.empty()
+        
+        with feedback_container:
+            with st.spinner(f"🤖 Gerando feedback para questão {i+1}..."):
                 try:
                     feedback = feedback_generator.generate_feedback(
                         q['question'],
@@ -491,10 +493,11 @@ def render_training_summary():
                         is_correct,
                         st.session_state.category
                     )
-                    st.markdown(feedback)
+                    # Limpar spinner e mostrar feedback
+                    feedback_container.markdown(feedback)
                 except Exception as e:
                     # Fallback para erro na geração de feedback
-                    st.warning("⚠️ **Limite de IA atingido - usando feedback local:**")
+                    feedback_container.warning("⚠️ **Limite de IA atingido - usando feedback local:**")
                     if is_correct:
                         st.success(f"✅ Parabéns! Sua resposta '{q['options'][user_ans_idx]}' está correta!")
                     else:
@@ -503,8 +506,8 @@ def render_training_summary():
                     # Mostrar explicação da questão se disponível
                     if q.get('explanation'):
                         st.info(f"💡 **Explicação:** {q['explanation']}")
-                
-                st.markdown("---")
+        
+        st.markdown("---")
     
     # Botões de ação
     col1, col2, col3 = st.columns(3)
