@@ -72,7 +72,27 @@ Use português brasileiro."""
             return feedback
             
         except Exception as e:
-            logger.error(f"Erro ao gerar feedback: {e}")
+            error_msg = str(e)
+            if "ThrottlingException" in error_msg or "Too many tokens" in error_msg:
+                logger.warning(f"Limite diário do Bedrock atingido")
+                # Retornar feedback informativo sobre limite
+                return f"""⚠️ **Limite Diário de IA Atingido**
+
+🤖 O feedback personalizado da IA Amazon Bedrock não está disponível no momento devido ao limite diário do Free Tier.
+
+📅 **Volte amanhã** para receber análises detalhadas da IA!
+
+💡 **Enquanto isso:**
+- Continue praticando as questões
+- Revise as explicações das respostas
+- Consulte materiais de estudo em segurança cibernética
+
+✅ **Sua resposta foi {'correta' if is_correct else 'incorreta'}**
+{f'Resposta correta: {correct_answer}' if not is_correct else ''}
+
+🔄 **O sistema continua funcionando normalmente!**"""
+            else:
+                logger.error(f"Erro ao gerar feedback: {e}")
             return self._get_default_feedback(is_correct, user_answer, correct_answer)
     
     def _get_default_feedback(self, is_correct: bool, user_answer: str = "", correct_answer: str = "") -> str:
@@ -133,7 +153,12 @@ Use tom amigável e motivador. Português brasileiro."""
             return result['output']['message']['content'][0]['text']
             
         except Exception as e:
-            logger.error(f"Erro ao gerar feedback de relatório: {e}")
+            error_msg = str(e)
+            if "ThrottlingException" in error_msg or "Too many tokens" in error_msg:
+                logger.warning(f"Limite diário do Bedrock atingido para relatório")
+                return f"📅 Feedback detalhado da IA estará disponível amanhã. Sua taxa de acerto foi {accuracy:.1f}% - {'Excelente!' if accuracy >= 80 else 'Continue praticando!'}"
+            else:
+                logger.error(f"Erro ao gerar feedback de relatório: {e}")
             return f"Parabéns por sua taxa de acerto de {accuracy:.1f}%! Continue praticando."
 
 
@@ -201,5 +226,10 @@ Crie apenas JSON válido, sem explicações adicionais."""
             logger.error(f"Erro ao fazer parse da resposta IA: {e}")
             return None
         except Exception as e:
-            logger.error(f"Erro ao gerar questão: {e}")
+            error_msg = str(e)
+            if "ThrottlingException" in error_msg or "Too many tokens" in error_msg:
+                logger.warning(f"Limite diário do Bedrock atingido para geração de questões")
+                return None  # Retorna None para indicar que não foi possível gerar
+            else:
+                logger.error(f"Erro ao gerar questão: {e}")
             return None
